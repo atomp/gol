@@ -49,6 +49,7 @@
   // Initialise renderer
   var renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight-4);
+  renderer.setClearColor(0xffffff);
   document.body.appendChild(renderer.domElement);
 
   var scene = new THREE.Scene();
