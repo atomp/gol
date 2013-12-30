@@ -6,6 +6,7 @@
 }
 
 #settings{
+  padding: 5px 0;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -15,7 +16,6 @@
 }
 
 .btn {
-  padding: 0;
   width: 40px;
   height: 40px;
   border: 1px solid black;
@@ -25,7 +25,6 @@
 }
 
 #optList {
-  margin: 5px 0;
   list-style: none;
   text-align: center;
 }
@@ -53,5 +52,13 @@
 }
 #slowdown {
   background: no-repeat url('../img/minus.svg');
+  background-size: 100% auto;
+}
+#rotateleft {
+  background: no-repeat url('../img/left.svg');
+  background-size: 100% auto;
+}
+#rotateright {
+  background: no-repeat url('../img/right.svg');
   background-size: 100% auto;
 }
