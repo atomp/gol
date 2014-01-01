@@ -1,14 +1,16 @@
 (function() {
   // Dimensions the grid
-  var height = 30;
-  var width = 30;
+  var height = 45;
+  var width = 90;
 
+  // Constants for cells to live or die
   var rules = {
     maxNeightbours: 3,
     minNeighbours: 2,
     toBirth: 3,
   }
 
+  // true if the simulation is paused
   window.paused = false;
   
   // Time between ticks
@@ -16,12 +18,15 @@
 
   // For camera angles
   window.degrees = 0;
-  window.radius = 100;
+  window.radius = 150;
   window.cameraOffset = width / 2;
+
+  // 0 Sized geometry to merge with
+  window.geo = new THREE.CubeGeometry(0, 0, 0);
 
   var Cell = function(x,y) {  // Create a new living cell
     var cell = new THREE.Mesh(
-      new THREE.CubeGeometry(1,1,1), 
+      new THREE.CubeGeometry(1, 1, 1), 
       new THREE.MeshLambertMaterial(
         {color: 0x999999}
       )
@@ -29,18 +34,18 @@
 
     cell.position.x = x;
     cell.position.y = y;
-    scene.add(cell);
 
-    this.kill = function() {
-      scene.remove(cell);    
-    }
+    THREE.GeometryUtils.merge(geo, cell);
   };
 
-  var randomBoolean = function() {
-    return Math.floor(Math.random() * 2) === 1;
+  // Returns true or false, true (1 / chance) times
+  var randomBoolean = function(chance) {
+    if(chance === undefined) chance = 2;
+    return Math.floor(Math.random() * chance) === 0;
   }
 
-  window.setCamera = function() { // Set the position of the camera based on degrees round
+  // Set the position of the camera based on degrees round
+  window.setCamera = function() { 
     camera.position.x = cameraOffset + (radius * Math.sin(degrees * Math.PI / 180));
     camera.position.z = radius * Math.cos(degrees * Math.PI / 180);
     camera.lookAt(new THREE.Vector3(cameraOffset, camera.position.y, 0));
@@ -69,7 +74,7 @@
   scene.add(pointLight);
 
 
-  // Init the cells
+  // Initialise the cells randomly
   var cells = [];
   for(var i=0; i<width; i++) {
     for(var j=0; j<height; j++) {
@@ -77,15 +82,19 @@
         cells.push([]);
       }
 
-      if(randomBoolean() === true) {
+      if(randomBoolean(8) === true) {
         cells[i][j] = new Cell(i, j);
       }
     }
   }
 
-  window.tick = function(force) { // Execute one cycle
+
+  // Execute one cycle
+  window.tick = function(force) {
     if(!paused && !force) setTimeout(tick, timeout);
     if(paused && !force) return;
+
+    window.geo = new THREE.CubeGeometry(0, 0, 0);
 
     var nextCells = [];
     for(var i=0; i<width; i++) {
@@ -94,6 +103,7 @@
           nextCells.push([]);
         }
 
+        // Count up the number of neighbours
         var neighbours = 0;
         if(cells[i-1] !== undefined && cells[i-1][j-1] !== undefined) neighbours++; 
         if(cells[i-1] !== undefined && cells[i-1][j] !== undefined) neighbours++; 
@@ -104,26 +114,34 @@
         if(cells[i+1] !== undefined && cells[i+1][j] !== undefined) neighbours++; 
         if(cells[i+1] !== undefined && cells[i+1][j+1] !== undefined) neighbours++;
 
-        if(cells[i][j] === undefined) { // This cell is dead :(
+        if(cells[i][j] === undefined) { // This cell is dead
           if(neighbours === rules.toBirth) {
             nextCells[i][j] = new Cell(i,j);
           }
-        } else { // This cell is alive, will it stay this way? only one way to find out
-          if(neighbours > rules.maxNeightbours || neighbours < rules.minNeighbours) {
-            cells[i][j].kill();
-          } else {
-            nextCells[i][j] = cells[i][j];
+        } else { // This cell is alive
+          if(neighbours <= rules.maxNeightbours && neighbours >= rules.minNeighbours) {
+            nextCells[i][j] = new Cell(i,j);
           }
         }
       }
     }
     cells = nextCells;
+
+    // Remove the old mesh and add this new one
+    scene.remove(window.mesh);
+    window.mesh = new THREE.Mesh(
+      geo, 
+      new THREE.MeshLambertMaterial(
+        {color: 0x999999}
+      )
+    );
+    scene.add(mesh);
   }
 
   var render = function() { // Draw loop
     requestAnimationFrame(render);
     renderer.render(scene, camera);
-  };
+  }
 
   render(); // Kick off draw loop
   tick(); // Kick off ticks
