@@ -1,8 +1,4 @@
 (function() {
-  // Dimensions the grid
-  var height = 45;
-  var width = 90;
-
   // Constants for cells to live or die
   var rules = {
     maxNeightbours: 3,
@@ -10,19 +6,21 @@
     toBirth: 3,
   }
 
-  // true if the simulation is paused
-  window.paused = false;
-  
-  // Time between ticks
-  window.timeout = 500;
+  // Dimensions the grid
+  var consts = {
+    height: 45,
+    width: 90
+  }
 
-  // For camera angles
-  window.degrees = 0;
-  window.radius = 150;
-  window.cameraOffset = width / 2;
+  // Camera variables modified by user input
+  window.view = {
+    degrees: 0,
+    radius: 150,
+    offset: consts.width/2
+  };
 
   // 0 Sized geometry to merge with
-  window.geo = new THREE.CubeGeometry(0, 0, 0);
+  var geo = new THREE.CubeGeometry(0, 0, 0);
 
   var Cell = function(x,y) {  // Create a new living cell
     var cell = new THREE.Mesh(
@@ -46,9 +44,9 @@
 
   // Set the position of the camera based on degrees round
   window.setCamera = function() { 
-    camera.position.x = cameraOffset + (radius * Math.sin(degrees * Math.PI / 180));
-    camera.position.z = radius * Math.cos(degrees * Math.PI / 180);
-    camera.lookAt(new THREE.Vector3(cameraOffset, camera.position.y, 0));
+    camera.position.x = view.offset + (view.radius * Math.sin(view.degrees * Math.PI / 180));
+    camera.position.z = view.radius * Math.cos(view.degrees * Math.PI / 180);
+    camera.lookAt(new THREE.Vector3(view.offset, camera.position.y, 0));
   }
 
 
@@ -62,88 +60,92 @@
 
   // Initialise camera
   window.camera = new THREE.PerspectiveCamera(25, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.y = height/2;
+  camera.position.y = consts.height/2;
   setCamera();
   scene.add(camera);
 
   // Initialise pointLight
   var pointLight = new THREE.PointLight(0xFFFFFF);
-  pointLight.position.x = width / 2;
-  pointLight.position.y = height / 2;
+  pointLight.position.x = consts.width / 2;
+  pointLight.position.y = consts.height / 2;
   pointLight.position.z = 100;
   scene.add(pointLight);
 
 
-  // Initialise the cells randomly
-  var cells = [];
-  for(var i=0; i<width; i++) {
-    for(var j=0; j<height; j++) {
-      if(cells[i] === undefined) {
-        cells.push([]);
-      }
-
-      if(randomBoolean(8) === true) {
-        cells[i][j] = new Cell(i, j);
-      }
-    }
-  }
-
-
-  // Execute one cycle
-  window.tick = function(force) {
-    if(!paused && !force) setTimeout(tick, timeout);
-    if(paused && !force) return;
-
-    window.geo = new THREE.CubeGeometry(0, 0, 0);
-
-    var nextCells = [];
-    for(var i=0; i<width; i++) {
-      for(var j=0; j<height; j++) {
-        if(nextCells[i] === undefined) {
-          nextCells.push([]);
-        }
-
-        // Count up the number of neighbours
-        var neighbours = 0;
-        if(cells[i-1] !== undefined && cells[i-1][j-1] !== undefined) neighbours++; 
-        if(cells[i-1] !== undefined && cells[i-1][j] !== undefined) neighbours++; 
-        if(cells[i-1] !== undefined && cells[i-1][j+1] !== undefined) neighbours++; 
-        if(cells[i][j-1] !== undefined) neighbours++; 
-        if(cells[i][j+1] !== undefined) neighbours++; 
-        if(cells[i+1] !== undefined && cells[i+1][j-1] !== undefined) neighbours++; 
-        if(cells[i+1] !== undefined && cells[i+1][j] !== undefined) neighbours++; 
-        if(cells[i+1] !== undefined && cells[i+1][j+1] !== undefined) neighbours++;
-
-        if(cells[i][j] === undefined) { // This cell is dead
-          if(neighbours === rules.toBirth) {
-            nextCells[i][j] = new Cell(i,j);
+  window.sim = {  // Simulation logic
+    paused: false,  // True if the simulation is paused
+    timeout: 500, // Time between ticks
+    cells: [],  // 2D array of cells
+    mesh: null, // merged mesh of cells
+    init: function(density) {  // Initialise the game of life with random cells
+      for(var i=0; i<consts.width; i++) {
+        for(var j=0; j<consts.height; j++) {
+          if(sim.cells[i] === undefined) {
+            sim.cells.push([]);
           }
-        } else { // This cell is alive
-          if(neighbours <= rules.maxNeightbours && neighbours >= rules.minNeighbours) {
-            nextCells[i][j] = new Cell(i,j);
+
+          if(randomBoolean(density) === true) {
+            sim.cells[i][j] = new Cell(i, j);
           }
         }
       }
-    }
-    cells = nextCells;
+    },
+    tick: function(force) { // Execute one cycle
+      if(!sim.paused && !force) setTimeout(sim.tick, sim.timeout);
+      if(sim.paused && !force) return;
 
-    // Remove the old mesh and add this new one
-    scene.remove(window.mesh);
-    window.mesh = new THREE.Mesh(
-      geo, 
-      new THREE.MeshLambertMaterial(
-        {color: 0x999999}
-      )
-    );
-    scene.add(mesh);
-  }
+      geo = new THREE.CubeGeometry(0, 0, 0);
+
+      var nextCells = [];
+      for(var i=0; i<consts.width; i++) {
+        for(var j=0; j<consts.height; j++) {
+          if(nextCells[i] === undefined) {
+            nextCells.push([]);
+          }
+
+          // Count up the number of neighbours
+          var neighbours = 0;
+          if(sim.cells[i-1] !== undefined && sim.cells[i-1][j-1] !== undefined) neighbours++; 
+          if(sim.cells[i-1] !== undefined && sim.cells[i-1][j] !== undefined) neighbours++; 
+          if(sim.cells[i-1] !== undefined && sim.cells[i-1][j+1] !== undefined) neighbours++; 
+          if(sim.cells[i][j-1] !== undefined) neighbours++; 
+          if(sim.cells[i][j+1] !== undefined) neighbours++; 
+          if(sim.cells[i+1] !== undefined && sim.cells[i+1][j-1] !== undefined) neighbours++; 
+          if(sim.cells[i+1] !== undefined && sim.cells[i+1][j] !== undefined) neighbours++; 
+          if(sim.cells[i+1] !== undefined && sim.cells[i+1][j+1] !== undefined) neighbours++;
+
+          if(sim.cells[i][j] === undefined) { // This cell is dead
+            if(neighbours === rules.toBirth) {
+              nextCells[i][j] = new Cell(i,j);
+            }
+          } else { // This cell is alive
+            if(neighbours <= rules.maxNeightbours && neighbours >= rules.minNeighbours) {
+              nextCells[i][j] = new Cell(i,j);
+            }
+          }
+        }
+      }
+      sim.cells = nextCells;
+
+      // Remove the old mesh and add this new one
+      scene.remove(sim.mesh);
+      sim.mesh = new THREE.Mesh(
+        geo, 
+        new THREE.MeshLambertMaterial(
+          {color: 0x999999}
+        )
+      );
+      scene.add(sim.mesh);
+    }
+  };
+  
 
   var render = function() { // Draw loop
     requestAnimationFrame(render);
     renderer.render(scene, camera);
   }
 
+  sim.init(7);
+  sim.tick(); // Kick off ticks
   render(); // Kick off draw loop
-  tick(); // Kick off ticks
-
 }());
